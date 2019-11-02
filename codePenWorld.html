@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title></title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="">
+        <style>
+                body {
+        font-family: sans-serif;
+        font-size: 100%;
+        background: #222;
+        color: #fff;
+        max-width: 1000px;
+        margin: 0 auto;
+        }
+
+        h1 {
+        text-align: center;
+        margin: 1em 0;
+        font-weight: normal;
+        }
+
+2
+
+        svg {
+        border-style: solid;
+        border-color: white;
+        border-width: 1px;
+        }
+                
+        </style>
+    </head>
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/1.6.20/topojson.js"></script>
+    <body>
+        <h1>D3 - Known Meteorite Locations</h1>
+        <script>
+        
+const meteoriteDataURL = "https://raw.githubusercontent.com/FreeCodeCamp/ProjectReferenceData/master/meteorite-strike-data.json";
+const worldMapURL = "https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json";
+
+const width = 1000,
+      height = 600;
+
+const svg = d3.select("body").append("svg")
+  .attr("width", width)
+  .attr("height", height)
+  .call(d3.zoom()
+    .on("zoom", zoomed));
+
+const g = svg.append("g");
+
+const tooltip = d3.select("body").append("div")
+  .attr("class", "tooltip")
+  .style("opacity", 0);
+
+const projection = d3.geoEquirectangular()
+  .scale(200)
+  .translate([width / 2, height / 2]);
+
+const path = d3.geoPath()
+  .projection(projection)
+  .pointRadius(d => Math.sqrt(d.properties.mass) / 100);
+
+d3.json(worldMapURL, function(error, world) {
+  if (error) return console.error(error);
+  
+  d3.json(meteoriteDataURL, function(error, meteorites) {
+    if (error) return console.error(error);
+    
+    meteorites.features.sort(function(a,b) {
+      return b.properties.mass - a.properties.mass
+    });
+    
+    g.selectAll(".border")
+      .data(world.features)
+      .enter().append("path")
+        .attr("class", "border")
+        .attr("d", path)
+        .style("stroke", "white")
+        .style("fill", "white");
+
+    g.selectAll(".meteorite")
+      .data(meteorites.features)
+      .enter().append("path")
+        .attr("class", "meteorite")
+        .attr("d", path)
+        .style("stroke", "steelblue")
+        .style("fill", "steelblue")
+        .style("opacity", "0.8")
+        .on("mouseover", function(d) {
+          d3.select(this)
+            .style("fill", "red")
+            .style("stroke", "red");
+          tooltip
+            .style("opacity", 0.8)
+            .html(
+              "Name: " + d.properties.name +
+              "<br />Mass: " + d.properties.mass +
+              "<br />Year: " + d.properties.year.slice(0, 4)
+            )
+            .style('left', (d3.event.pageX) + 'px')
+            .style('top', (d3.event.pageY) + 'px');
+        })
+        .on("mouseout", function(d) {
+          d3.select(this)
+            .style("stroke", "steelblue")
+            .style("fill", "steelblue");
+          tooltip.style("opacity", 0);
+        });
+    
+  });
+});
+  
+function zoomed() {
+  g.attr("transform", d3.event.transform);
+}
+        </script>
+    </body>
+</html>
