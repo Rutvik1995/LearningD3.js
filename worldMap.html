@@ -45,22 +45,30 @@
         
         <script>
             
+            var yearVisedata={};
+            // d3.csv("https://raw.githubusercontent.com/ZeningQu/World-Bank-Data-by-Indicators/master/climate-change/climate-change.csv",function(data){
+            //         console.log(data[0]);
+            //         var count=0;
+                    
+            //         for(var i=0;i<data.length;i++){
+            //             if(data[i].Year==1977){
+            //                 console.log(count);
+            //                 yearVisedata[count]=data[i];
+            //                 count++;
+            //             }
+            
+            //         }
+
+            //         console.log(yearVisedata);
+            // })
+
+
 
             const tooltip = d3.select("body").append("div")
                             .attr("class", "tooltip")
                             .style("opacity", 0);
 
 
-            // var colorScale = d3.scale.linear()
-            //   .domain([0, 1])
-            //   .range([${0,width}])
-
-            var axis = d3.svg.axis()
-              .orient('bottom')
-              .scale(scale);
-            var axisGroup = container.append('g')
-              .classed('axis', true)
-              .call(axis);
 
             var margin = { top: 50, right: 50, bottom: 50, left: 50 },
                 width = 800 - margin.left - margin.right,
@@ -72,9 +80,10 @@
                 .append('g')
                 .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
             
-           var f= d3.queue()
+                var f= d3.queue()
                 .defer(d3.json,"https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")
                 .defer(d3.csv,"concap.csv")
+                .defer(d3.csv,"https://raw.githubusercontent.com/ZeningQu/World-Bank-Data-by-Indicators/master/climate-change/climate-change.csv")
                 .await(ready)
 
                 var projection = d3.geoMercator()
@@ -84,18 +93,42 @@
                 var path = d3.geoPath()
                             .projection(projection);                                
 
-             function ready(error,data,dataset){
+             function ready(error,data,dataset,worldBankData){
                  var countries = topojson.feature(data,data.objects.countries).features;
-                 for(var i=0;i<countries.length;i++){
-                   
-                 }
+
+                console.log(worldBankData);
+                 var count=0;
+                 var maxValueCo2=0;
+                 for(var i=0;i<worldBankData.length;i++){
+                        if(worldBankData[i].Year==1977){
+                            //console.log(count);
+                            yearVisedata[count]=worldBankData[i];
+                            console.log(worldBankData[i]['CO2 emissions (kt)']);
+                            if(worldBankData[i]['CO2 emissions (kt)']>maxValueCo2){
+                                maxValueCo2=worldBankData[i]['CO2 emissions (kt)'];
+                            }
+                            count++;
+                        }
+            
+                    }
+                console.log(yearVisedata);
+                console.log(maxValueCo2);
+                
+
+                var color =d3.scaleLinear()
+                            .domain([0, maxValueCo2])
+                            .range(["#92c1e8","#3da2f5"]);
+
 
                  svg.selectAll(".country")
                  .data(countries)
                  .enter()
                     .append("path")
-                    .attr("class","country")
+                    //.attr("class","country")
                     .attr("d",path)
+                    .attr("fill",function(d,i){
+                        return color(yearVisedata[i]['CO2 emissions (kt)']);
+                    })
                     .on('mouseover',function(d){
                          d3.select(this).classed("selected",true)
                     })
@@ -135,9 +168,9 @@
                             .on("mouseout", function(d) {
                             d3.select(this)
                             .style("stroke", "black")
-                            .style("fill", "black");
-                            tooltip.style("opacity", 0);
-                        });
+                        .style("fill", "black");
+                        tooltip.style("opacity", 0);
+                     });
              }    
 
 
