@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+    <head>
+            <script src="https://d3js.org/d3.v5.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/1.6.20/topojson.js"></script>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title></title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="">
+        <style>
+        body {
+  margin: 0px;
+  overflow: hidden;
+}
+
+.sphere {
+  fill: #4242e4;
+}
+
+.country {
+  stroke: black;
+  stroke-width: 0.05px;
+}
+
+.country:hover {
+  fill: red;
+}
+
+.tick text {
+  font-size: 1em;
+  font-family: sans-serif;
+  fill: black;
+}
+
+rect {opacity: .7;}
+
+p {padding-left: 10px;}
+</style>
+    </head>
+
+    <body>
+        <script>
+        const svg = d3.select('svg');
+
+const projection = d3.geoNaturalEarth1();
+const pathGenerator = d3.geoPath().projection(projection);
+
+const g = svg.append('g');
+
+const colorLegendG = svg.append('g')
+   .attr('transform', `translate(40,310)`);
+
+
+g.append('path')
+    .attr('class', 'sphere')
+    .attr('d', pathGenerator({type: 'Sphere'}));
+
+svg.call(d3.zoom().on('zoom', () => {
+  g.attr('transform', d3.event.transform);
+}));
+ const colorScale = d3.scaleOrdinal();
+
+ const colorValue = d => d.properties.economy;
+
+const loadAndProcessData = () =>
+
+  Promise.all([
+    d3.tsv('https://unpkg.com/world-atlas@1.1.4/world/50m.tsv'),
+    d3.json('https://unpkg.com/world-atlas@1.1.4/world/50m.json')
+  ])
+  
+  .then(([tsvData, topoJSONdata]) => {
+  
+  const rowById = tsvData.reduce((accumulator, d) => {
+    accumulator[d.iso_n3] = d;
+    return accumulator;
+  }, {});
+  
+  const countries = topojson.feature(topoJSONdata, topoJSONdata.objects.countries);
+    
+     countries.features.forEach(d =>{
+   Object.assign(d.properties, rowById[d.id])
+  });
+  
+  return countries;
+  
+});
+
+const colorLegend = (selection, props) => {
+  const {
+    colorScale,
+    circleRadius,
+    spacing,
+    textOffset,
+    backgroundRectWidth
+  } = props;
+  
+  const backgroundRect = selection.selectAll('rect')
+    .data([null]);
+  
+  const n = colorScale.domain().length;
+  backgroundRect.enter()
+    .append('rect')
+    .merge(backgroundRect)
+    .attr('x', -circleRadius * 2)
+    .attr('y', -circleRadius * 2)
+    .attr('rx', circleRadius * 2)
+    .attr('width', backgroundRectWidth)
+    .attr('fill', 'white')
+    .attr('height', spacing * n + circleRadius * 2)
+
+  const groups = selection.selectAll('.tick')
+    .data(colorScale.domain());
+  const groupsEnter = groups
+    .enter().append('g')
+      .attr('class', 'tick');
+  groupsEnter
+    .merge(groups)
+      .attr('transform', (d, i) =>
+        `translate(0, ${i * spacing})`
+      );
+  groups.exit().remove();
+  
+  groupsEnter.append('circle')
+    .merge(groups.select('circle'))
+      .attr('r', circleRadius)
+      .attr('fill', colorScale);
+  
+  groupsEnter.append('text')
+    .merge(groups.select('text'))
+      .text(d => d)
+      .attr('dy', '0.32em')
+      .attr('x', textOffset);
+}
+
+  loadAndProcessData().then(countries => {
+  console.log(colorScale);
+ colorScale.domain(countries.features.map(colorValue))
+    .domain(colorScale.domain().sort().reverse())
+    .range(d3.schemeSpectral[colorScale.domain().length]);
+    
+  colorLegendG.call(colorLegend, {
+  colorScale,
+  circleRadius: 8,
+  spacing: 20,
+  textOffset: 15,
+  backgroundRectWidth: 240
+});
+  
+  g.selectAll('path').data(countries.features)
+    .enter().append('path')
+      .attr('class', 'country')
+      .attr('d', pathGenerator)
+      .attr('fill', d => colorScale(colorValue(d)))
+    .append('title')
+      .text(d => d.properties.name + ' : ' + colorValue(d));
+  
+});
+
+
+        </script>
+        
+        <svg width="960" height="500"></svg>
+<p><a href="https://www.youtube.com/watch?v=OoZ0LWD9KUs&index=19&list=PL9yYRbwpkykvOXrZumtZWbuaXWHvjD8gi">Learn how  in this video</a></p>
+    </body>
+</html>
